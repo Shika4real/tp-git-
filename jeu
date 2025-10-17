@@ -1,0 +1,131 @@
+// ...existing code...
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Random;
+
+public class Pong extends JPanel implements ActionListener, KeyListener {
+    static final int WIDTH = 480, HEIGHT = 360;
+    static final int PADDLE_W = 12, PADDLE_H = 80;
+    static final int BALL_R = 8;
+    static final int PADDLE_SPEED = 6;
+    static final int BALL_SPEED = 4;
+    static final int DELAY = 16; // ~60 FPS
+
+    int px = 20;
+    int py = (HEIGHT - PADDLE_H) / 2;
+    double bx, by;
+    double vx, vy;
+    int score = 0;
+    boolean moveUp = false, moveDown = false;
+
+    Timer timer;
+    Random rnd = new Random();
+
+    public Pong() {
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(Color.BLACK);
+        setFocusable(true);
+        addKeyListener(this);
+        resetBall();
+        timer = new Timer(DELAY, this);
+        timer.start();
+    }
+
+    void resetBall() {
+        bx = WIDTH / 2.0;
+        by = HEIGHT / 2.0;
+        double angle = (rnd.nextDouble() * 1.2) - 0.6; // -0.6 .. 0.6
+        int dir = rnd.nextBoolean() ? 1 : -1;
+        vx = dir * BALL_SPEED * (1.0 + rnd.nextDouble() * 0.3);
+        vy = BALL_SPEED * angle;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setColor(Color.WHITE);
+
+        // Paddle
+        g2.fillRect(px, py, PADDLE_W, PADDLE_H);
+
+        // Ball
+        g2.fillOval((int) (bx - BALL_R), (int) (by - BALL_R), BALL_R * 2, BALL_R * 2);
+
+        // Score
+        g2.setFont(new Font("Arial", Font.PLAIN, 14));
+        g2.drawString("Score: " + score, WIDTH - 90, 20);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        // Move paddle
+        if (moveUp) py = Math.max(0, py - PADDLE_SPEED);
+        if (moveDown) py = Math.min(HEIGHT - PADDLE_H, py + PADDLE_SPEED);
+
+        // Move ball
+        bx += vx;
+        by += vy;
+
+        // Top/bottom collision
+        if (by - BALL_R <= 0 || by + BALL_R >= HEIGHT) {
+            vy = -vy;
+        }
+
+        // Paddle collision
+        if (bx - BALL_R <= px + PADDLE_W && bx - BALL_R >= px &&
+            by > py && by < py + PADDLE_H && vx < 0) {
+            vx = -vx * 1.03; // slightly speed up
+            double rel = (by - (py + PADDLE_H / 2.0)) / (PADDLE_H / 2.0);
+            vy += rel * 2;
+            score++;
+        }
+
+        // Right wall bounce
+        if (bx + BALL_R >= WIDTH) {
+            vx = -vx;
+        }
+
+        // Missed ball (goes left)
+        if (bx - BALL_R < 0) {
+            score = 0;
+            resetBall();
+        }
+
+        repaint();
+    }
+
+    // KeyListener
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int k = e.getKeyCode();
+        if (k == KeyEvent.VK_W || k == KeyEvent.VK_UP) moveUp = true;
+        if (k == KeyEvent.VK_S || k == KeyEvent.VK_DOWN) moveDown = true;
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int k = e.getKeyCode();
+        if (k == KeyEvent.VK_W || k == KeyEvent.VK_UP) moveUp = false;
+        if (k == KeyEvent.VK_S || k == KeyEvent.VK_DOWN) moveDown = false;
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) { }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("Petit Pong");
+            Pong panel = new Pong();
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setResizable(false);
+            frame.add(panel);
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+            panel.requestFocusInWindow();
+        });
+    }
+}
+// ...existing code...
